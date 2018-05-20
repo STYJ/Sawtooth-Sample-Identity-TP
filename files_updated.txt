@@ -1,0 +1,9 @@
+nose2.cfg - done
+setup.py - done
+packaging - done
+
+Sawtooth identity
+	client - done
+	exceptions - done
+	cli - done
+	message factory 

@@ -16,73 +16,99 @@
 from sawtooth_processor_test.message_factory import MessageFactory
 
 class IdentityMessageFactory:
+    # done
     def __init__(self, signer=None):
         self._factory = MessageFactory(
-            family_name="xo",
-            family_version="1.0",
-            namespace=MessageFactory.sha512("xo".encode("utf-8"))[0:6],
+            family_name="identity",
+            family_version="0.1",
+            namespace=MessageFactory.sha512("identity".encode("utf-8"))[0:6],
             signer=signer)
 
-    def _game_to_address(self, game):
-        return self._factory.namespace + \
-            self._factory.sha512(game.encode())[0:64]
+    # done
+    def get_public_key(self):
+        return self._factory.get_public_key()
 
+    # done
+    def _name_to_address(self, name):
+        return self._factory.namespace + \
+            self._factory.sha512(name.encode())[0:6] + \
+            self._factory.sha512(game.encode())[-58:]
+
+    # done
     def create_tp_register(self):
         return self._factory.create_tp_register()
 
+    # done
     def create_tp_response(self, status):
         return self._factory.create_tp_response(status)
 
-    def _create_txn(self, txn_function, game, action, space=None):
-        payload = ",".join([
-            str(game), str(action), str(space)
-        ]).encode()
+    # done
+    def _dumps(self, obj):
+        return cbor.dumps(obj)
 
-        addresses = [self._game_to_address(game)]
+    # done
+    def _loads(self, data):
+        return cbor.loads(data)
 
-        return txn_function(payload, addresses, addresses, [])
+    # done
+    def _create_txn(self, txn_function, action, name, date_of_birth='', gender=''):
+        payload = {
+            'Action': action
+            'Name': name,
+            'Date_of_birth': date_of_birth,
+            'Gender': gender
+        }
 
-    def create_tp_process_request(self, action, game, space=None):
+        payload_bytes = self._dumps(payload)
+        addresses = [self._name_to_address(name)]
+
+        return txn_function(payload_bytes, addresses, addresses, [])
+
+    # done
+    def create_tp_process_request(self, action, name, date_of_birth='', gender=''):
         txn_function = self._factory.create_tp_process_request
-        return self._create_txn(txn_function, game, action, space)
+        return self._create_txn(txn_function, action, name, date_of_birth, gender)
 
-    def create_transaction(self, game, action, space=None):
+    # done
+    def create_transaction(self, action, name, date_of_birth='', gender=''):
         txn_function = self._factory.create_transaction
-        return self._create_txn(txn_function, game, action, space)
+        return self._create_txn(txn_function, action, name, date_of_birth, gender)
 
-    def create_get_request(self, game):
-        addresses = [self._game_to_address(game)]
+    # done
+    def create_get_request(self, name):
+        addresses = [self._name_to_address(name)]
         return self._factory.create_get_request(addresses)
 
-    def create_get_response(
-        self, game, board="---------", state="P1-NEXT", player1="", player2=""
-    ):
-        address = self._game_to_address(game)
+    # done
+    # Not really sure about this 
+    def create_get_response(self, name, date_of_birth, gender):
+        address = self._name_to_address(name)
 
         data = None
-        if board is not None:
-            data = ",".join([game, board, state, player1, player2]).encode()
+        if date_of_birth is not None and gender is not None:
+            data = self._dumps({"Name": name, "Date_of_birth": date_of_birth, "Gender": gender})
         else:
             data = None
 
         return self._factory.create_get_response({address: data})
 
-    def create_set_request(
-        self, game, board="---------", state="P1-NEXT", player1="", player2=""
-    ):
-        address = self._game_to_address(game)
+    # done
+    def create_set_response(self, name):
+        addresses = [self._name_to_address(name)]
+        return self._factory.create_set_response(addresses)
 
-        data = None
-        if state is not None:
-            data = ",".join([game, board, state, player1, player2]).encode()
+    # done
+    # Not really sure about this
+    def create_set_request(self, name, date_of_birth, gender):
+        address = self._name_to_address(name)
+
+        if date_of_birth is not None and gender is not None:
+            data = self._dumps({"Name": name, "Date_of_birth": date_of_birth, "Gender": gender})
         else:
             data = None
 
         return self._factory.create_set_request({address: data})
 
-    def create_set_response(self, game):
-        addresses = [self._game_to_address(game)]
-        return self._factory.create_set_response(addresses)
 
-    def get_public_key(self):
-        return self._factory.get_public_key()
+
+

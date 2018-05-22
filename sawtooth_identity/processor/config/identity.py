@@ -24,24 +24,24 @@ from sawtooth_sdk.processor.exceptions import LocalConfigurationError
 LOGGER = logging.getLogger(__name__)
 
 
-def load_default_xo_config():
+def load_default_identity_config():
     """
-    Returns the default XOConfig
+    Returns the default IdentityConfig
     """
-    return XOConfig(
+    return IdentityConfig(
         connect='tcp://localhost:4004',
     )
 
 
-def load_toml_xo_config(filename):
-    """Returns a XOConfig created by loading a TOML file from the
+def load_toml_identity_config(filename):
+    """Returns a IdentityConfig created by loading a TOML file from the
     filesystem.
 
     Args:
         filename (string): The name of the file to load the config from
 
     Returns:
-        config (XOConfig): The XOConfig created from the stored
+        config (IdentityConfig): The IdentityConfig created from the stored
             toml file.
 
     Raises:
@@ -51,7 +51,7 @@ def load_toml_xo_config(filename):
         LOGGER.info(
             "Skipping transaction proccesor config loading from non-existent"
             " config file: %s", filename)
-        return XOConfig()
+        return IdentityConfig()
 
     LOGGER.info("Loading transaction processor information from config: %s",
                 filename)
@@ -72,25 +72,25 @@ def load_toml_xo_config(filename):
             "Invalid keys in transaction processor config: "
             "{}".format(", ".join(sorted(list(invalid_keys)))))
 
-    config = XOConfig(
+    config = IdentityConfig(
         connect=toml_config.get("connect", None)
     )
 
     return config
 
 
-def merge_xo_config(configs):
+def merge_identity_config(configs):
     """
-    Given a list of XOConfig objects, merges them into a single
-    XOConfig, giving priority in the order of the configs
+    Given a list of IdentityConfig objects, merges them into a single
+    IdentityConfig, giving priority in the order of the configs
     (first has highest priority).
 
     Args:
-        config (list of XOConfigs): The list of xo configs that
+        config (list of IdentityConfigs): The list of identity configs that
             must be merged together
 
     Returns:
-        config (XOConfig): One XOConfig that combines all of the
+        config (IdentityConfig): One IdentityConfig that combines all of the
             passed in configs.
     """
     connect = None
@@ -99,15 +99,19 @@ def merge_xo_config(configs):
         if config.connect is not None:
             connect = config.connect
 
-    return XOConfig(
+    return IdentityConfig(
         connect=connect
     )
 
-
-class XOConfig:
+# done
+class IdentityConfig:
     def __init__(self, connect=None):
         self._connect = connect
 
+    # Decorators are synthetic sugar for a function wrapper 
+    # i.e. connect = decorator_name(connect)
+    # The property decorator essentially turns a method into an attribute
+    # so you can call it just by doing variable_name.attribute_name
     @property
     def connect(self):
         return self._connect

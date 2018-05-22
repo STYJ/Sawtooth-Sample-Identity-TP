@@ -6,4 +6,14 @@ Sawtooth identity
 	client - done
 	exceptions - done
 	cli - done
-	message factory 
+	message factory - done
+	Processor
+		config
+			__init__ - done
+			identity - done
+		__init__ - done
+		handler
+		identity_payload
+		identity_state
+		main
+Tests

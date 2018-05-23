@@ -13,6 +13,7 @@
 # limitations under the License.
 # ------------------------------------------------------------------------------
 
+import pickle
 from sawtooth_processor_test.message_factory import MessageFactory
 
 class IdentityMessageFactory:
@@ -32,7 +33,7 @@ class IdentityMessageFactory:
     def _name_to_address(self, name):
         return self._factory.namespace + \
             self._factory.sha512(name.encode())[0:6] + \
-            self._factory.sha512(game.encode())[-58:]
+            self._factory.sha512(name.encode())[-58:]
 
     # done
     def create_tp_register(self):
@@ -44,11 +45,11 @@ class IdentityMessageFactory:
 
     # done
     def _dumps(self, obj):
-        return cbor.dumps(obj)
+        return pickle.dumps(obj, protocol=pickle.HIGHEST_PROTOCOL)
 
     # done
     def _loads(self, data):
-        return cbor.loads(data)
+        return pickle.loads(data)
 
     # done
     def _create_txn(self, txn_function, action, name, date_of_birth='', gender=''):

@@ -19,7 +19,7 @@ from base64 import b64encode
 import time
 import requests
 import yaml
-import cbor
+import pickle
 
 from sawtooth_signing import create_context
 from sawtooth_signing import CryptoFactory
@@ -96,7 +96,7 @@ class IdentityClient:
 
     def update(self, name, parameter, value, auth_user=None, auth_password=None):
         # Retrieving the current payload with the provided name
-        old_payload = show(name)
+        old_payload = self.show(name)
 
         if old_payload is not None:
             if parameter == 'name':
@@ -162,7 +162,7 @@ class IdentityClient:
 
             return [
                 # returns a list of dicts (payload)
-                cbor.loads(base64.b64decode(entry["data"]))
+                pickle.loads(base64.b64decode(entry["data"]))
                 for entry in encoded_entries
             ]
 
@@ -186,7 +186,7 @@ class IdentityClient:
 
         try:
             # returns a dict (payload)
-            return cbor.loads(
+            return pickle.loads(
                 base64.b64decode(
                     yaml.safe_load(result)["data"]))
 
@@ -269,8 +269,8 @@ class IdentityClient:
             'Gender': gender
         }
 
-        # Serialisation is via cbor
-        payload_bytes = cbor.dumps(payload)
+        # Serialisation is via pickle
+        payload_bytes = pickle.dumps(payload, protocol=pickle.HIGHEST_PROTOCOL)
 
         # Construct the address
         # In this example, input and output addresses are the same

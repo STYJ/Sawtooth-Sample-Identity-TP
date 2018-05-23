@@ -14,28 +14,29 @@
 # -----------------------------------------------------------------------------
 
 import hashlib
-
+import pickle
 from sawtooth_sdk.processor.exceptions import InternalError
 
 
-XO_NAMESPACE = hashlib.sha512('xo'.encode("utf-8")).hexdigest()[0:6]
+IDENTITY_NAMESPACE = hashlib.sha512('identity'.encode("utf-8")).hexdigest()[0:6]
 
 
-def _make_xo_address(name):
-    return XO_NAMESPACE + \
-        hashlib.sha512(name.encode('utf-8')).hexdigest()[:64]
+infix = _sha512(name.encode('utf-8'))[0:6]
+        suffix = _sha512(self._signer.get_public_key().as_hex().encode('utf-8'))[-58:]
+
+def _make_identity_address(self, name):
+    return IDENTITY_NAMESPACE + \
+        hashlib.sha512(name.encode('utf-8')).hexdigest()[0:6] + \
+        hashlib.sha512(self._signer.get_public_key().as_hex().encode('utf-8'))[-58:]
 
 
-class Game(object):
-    def __init__(self, name, board, state, player1, player2):
+class Identity(object):
+    def __init__(self, name, date_of_birth, gender):
         self.name = name
-        self.board = board
-        self.state = state
-        self.player1 = player1
-        self.player2 = player2
+        self.date_of_birth = date_of_birth
+        self.gender = gender
 
-
-class XoState(object):
+class IdentityState(object):
 
     TIMEOUT = 3
 
@@ -47,134 +48,175 @@ class XoState(object):
                 validator state from within the transaction processor.
         """
 
+        # context refers to the validator state.
         self._context = context
+
+        # The IdentityState has its own cache for optimisation to reduce number
+        # of REST api calls. Cache = {Address: serialized state data}
         self._address_cache = {}
 
-    def delete_game(self, game_name):
-        """Delete the Game named game_name from state.
+    # loads the identity with the name name
+    def get_identity(self, name):
+        """Get the identity associated with name.
 
         Args:
-            game_name (str): The name.
-
-        Raises:
-            KeyError: The Game with game_name does not exist.
-        """
-
-        games = self._load_games(game_name=game_name)
-
-        del games[game_name]
-        if games:
-            self._store_game(game_name, games=games)
-        else:
-            self._delete_game(game_name)
-
-    def set_game(self, game_name, game):
-        """Store the game in the validator state.
-
-        Args:
-            game_name (str): The name.
-            game (Game): The information specifying the current game.
-        """
-
-        games = self._load_games(game_name=game_name)
-
-        games[game_name] = game
-
-        self._store_game(game_name, games=games)
-
-    def get_game(self, game_name):
-        """Get the game associated with game_name.
-
-        Args:
-            game_name (str): The name.
+            name (str): The name.
 
         Returns:
-            (Game): All the information specifying a game.
+            (identity): All the information specifying a identity.
         """
 
-        return self._load_games(game_name=game_name).get(game_name)
+        # dict.get("key") is equivalent to dict["key"]
+        # this should return you a Identity object
+        return self._load_identities(name=name).get(name)
 
-    def _store_game(self, game_name, games):
-        address = _make_xo_address(game_name)
+    # delete the identity with the name name
+    def delete_identity(self, name):
+        """Delete the identity named name from state.
 
-        state_data = self._serialize(games)
+        Args:
+            name (str): The name.
 
+        Raises:
+            KeyError: The identity with name does not exist.
+        """
+
+        identities = self._load_identities(name=name)
+
+        # delete identity from dict of name, identity pairs
+        try:
+            del identities[name]
+        except KeyError:
+            raise InternalError("The identity with name {} does not exist.".format(name))
+
+        # If identities is not empty
+        if identities:
+
+            # update address cache and validator state to reflect remaining identities
+            # that said, it feels weird to store on the _address_cache 
+            # deleted_name, remaining identities pair since deleted_name
+            self._store_identity(name, identities=identities)
+        else:
+
+            # Remove from address cache and validator state
+            self._delete_identity(name)
+
+    # add the identity with the name name
+    def set_identity(self, name, identity):
+        """Store the identity in the validator state.
+
+        Args:
+            name (str): The name.
+            identity (identity): The information specifying the current identity.
+        """
+
+        identities = self._load_identities(name=name)
+
+        identities[name] = identity
+
+        self._store_identity(name, identities=identities)
+
+    def _store_identity(self, name, identities):
+        address = _make_identity_address(self, name)
+
+        state_data = self._serialize(identities)
+
+        # add to address cache for the IdentityState object
         self._address_cache[address] = state_data
 
+        # add into the validator's state
         self._context.set_state(
             {address: state_data},
             timeout=self.TIMEOUT)
 
-    def _delete_game(self, game_name):
-        address = _make_xo_address(game_name)
+    def _delete_identity(self, name):
+        address = _make_identity_address(self, name)
 
+        # remove from address cache for the IdentityState object
+        self._address_cache[address] = None
+
+        # remove from the validator's state
         self._context.delete_state(
             [address],
             timeout=self.TIMEOUT)
 
-        self._address_cache[address] = None
+    def _load_identities(self, name):
 
-    def _load_games(self, game_name):
-        address = _make_xo_address(game_name)
+        # gets the address of identity with name name
+        address = _make_identity_address(self, name)
 
+        # Checks if address is a valid key the cache (dict)
         if address in self._address_cache:
-            if self._address_cache[address]:
-                serialized_games = self._address_cache[address]
-                games = self._deserialize(serialized_games)
-            else:
-                games = {}
+
+            # retrieve the serialized identities
+            serialized_identities = self._address_cache[address]
+
+            # deserialize and return
+            identities = self._deserialize(data=serialized_identities)
+
+        # If address cannot be found in cache, look at context (validator state)
         else:
+
             state_entries = self._context.get_state(
                 [address],
                 timeout=self.TIMEOUT)
+
+            # If something was retrieved from validator state, update cache
             if state_entries:
 
-                self._address_cache[address] = state_entries[0].data
+                # Extract the identities
+                serialized_identities = state_entries[0].data
 
-                games = self._deserialize(data=state_entries[0].data)
+                # Update cache
+                self._address_cache[address] = serialized_identities
+
+                # Deserialize it and return it
+                identities = self._deserialize(data=serialized_identities)
 
             else:
-                self._address_cache[address] = None
-                games = {}
 
-        return games
+                # I believe this is what the address_cache and validator state
+                # doesn't contain anything wrt this identity, something like
+                # brand new txn.
+                self._address_cache[address] = None
+                identities = {}
+
+        return identities
 
     def _deserialize(self, data):
         """Take bytes stored in state and deserialize them into Python
-        Game objects.
+        identity objects.
 
         Args:
-            data (bytes): The UTF-8 encoded string stored in state.
+            data (bytes): The pickle encoded identity stored in state.
 
         Returns:
-            (dict): game name (str) keys, Game values.
+            (dict): identity name (str) keys, identity values.
         """
 
-        games = {}
+        identities = {}
         try:
-            for game in data.decode().split("|"):
-                name, board, state, player1, player2 = game.split(",")
-
-                games[name] = Game(name, board, state, player1, player2)
+            for identity in pickle.loads(data):
+                name = identity.name
+                identities[name] = identity
         except ValueError:
-            raise InternalError("Failed to deserialize game data")
+            raise InternalError("Failed to deserialize xidentity data")
 
-        return games
+        return identities
 
-    def _serialize(self, games):
-        """Takes a dict of game objects and serializes them into bytes.
+    def _serialize(self, identities):
+        """Takes a dict of identity objects, convert into an array
+        before serializing the entire array into bytes all together.
 
         Args:
-            games (dict): game name (str) keys, Game values.
+            identities (dict): identity name (str) keys, identity values.
 
         Returns:
-            (bytes): The UTF-8 encoded string stored in state.
+            (bytes): The pickle encoded identity stored in state.
         """
 
-        game_strs = []
-        for name, g in games.items():
-            game_str = ",".join(
-                [name, g.board, g.state, g.player1, g.player2])
-            game_strs.append(game_str)
+        serialized_identities = []
+        for _, identity in identities.items():
+            serialized_identities.append(identity)
 
-        return "|".join(sorted(game_strs)).encode()
+        return pickle.dumps(serialized_identity, protocol=pickle.HIGHEST_PROTOCOL)

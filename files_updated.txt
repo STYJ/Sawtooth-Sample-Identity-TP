@@ -12,8 +12,8 @@ Sawtooth identity
 			__init__ - done
 			identity - done
 		__init__ - done
-		handler
-		identity_payload
-		identity_state
-		main
+		handler - third
+		identity_payload - done
+		identity_state - done
+		main - fourth
 Tests

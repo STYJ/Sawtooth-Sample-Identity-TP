@@ -24,17 +24,17 @@ from sawtooth_sdk.processor.log import log_configuration
 from sawtooth_sdk.processor.config import get_log_config
 from sawtooth_sdk.processor.config import get_log_dir
 from sawtooth_sdk.processor.config import get_config_dir
-from sawtooth_xo.processor.handler import XoTransactionHandler
-from sawtooth_xo.processor.config.xo import XOConfig
-from sawtooth_xo.processor.config.xo import \
-    load_default_xo_config
-from sawtooth_xo.processor.config.xo import \
-    load_toml_xo_config
-from sawtooth_xo.processor.config.xo import \
-    merge_xo_config
+from sawtooth_identity.processor.handler import IdentityTransactionHandler
+from sawtooth_identity.processor.config.identity import IdentityConfig
+from sawtooth_identity.processor.config.identity import \
+    load_default_identity_config
+from sawtooth_identity.processor.config.identity import \
+    load_toml_identity_config
+from sawtooth_identity.processor.config.identity import \
+    merge_identity_config
 
 
-DISTRIBUTION_NAME = 'sawtooth-xo'
+DISTRIBUTION_NAME = 'sawtooth-identity'
 
 
 def parse_args(args):
@@ -65,19 +65,19 @@ def parse_args(args):
     return parser.parse_args(args)
 
 
-def load_xo_config(first_config):
-    default_xo_config = \
-        load_default_xo_config()
-    conf_file = os.path.join(get_config_dir(), 'xo.toml')
+def load_identity_config(first_config):
+    default_identity_config = \
+        load_default_identity_config()
+    conf_file = os.path.join(get_config_dir(), 'identity.toml')
 
-    toml_config = load_toml_xo_config(conf_file)
+    toml_config = load_toml_identity_config(conf_file)
 
-    return merge_xo_config(
-        configs=[first_config, toml_config, default_xo_config])
+    return merge_identity_config(
+        configs=[first_config, toml_config, default_identity_config])
 
 
-def create_xo_config(args):
-    return XOConfig(connect=args.connect)
+def create_identity_config(args):
+    return IdentityConfig(connect=args.connect)
 
 
 def main(args=None):
@@ -86,14 +86,14 @@ def main(args=None):
     opts = parse_args(args)
     processor = None
     try:
-        arg_config = create_xo_config(opts)
-        xo_config = load_xo_config(arg_config)
-        processor = TransactionProcessor(url=xo_config.connect)
-        log_config = get_log_config(filename="xo_log_config.toml")
+        arg_config = create_identity_config(opts)
+        identity_config = load_identity_config(arg_config)
+        processor = TransactionProcessor(url=identity_config.connect)
+        log_config = get_log_config(filename="identity_log_config.toml")
 
         # If no toml, try loading yaml
         if log_config is None:
-            log_config = get_log_config(filename="xo_log_config.yaml")
+            log_config = get_log_config(filename="identity_log_config.yaml")
 
         if log_config is not None:
             log_configuration(log_config=log_config)
@@ -102,11 +102,11 @@ def main(args=None):
             # use the transaction processor zmq identity for filename
             log_configuration(
                 log_dir=log_dir,
-                name="xo-" + str(processor.zmq_id)[2:-1])
+                name="identity-" + str(processor.zmq_id)[2:-1])
 
         init_console_logging(verbose_level=opts.verbose)
 
-        handler = XoTransactionHandler()
+        handler = identityTransactionHandler()
 
         processor.add_handler(handler)
 

@@ -23,12 +23,13 @@ class IdentityPayload(object):
         try:
             # The payload is pickle encoded dictionary
             decoded_payload = pickle.loads(payload)
+        except ValueError:
+            raise InvalidTransaction("Invalid payload serialization")
+        else:
             action = decoded_payload["Action"]
             name = decoded_payload["Name"]
             date_of_birth = decoded_payload["Date_of_birth"]
             gender = decoded_payload["Gender"]
-        except ValueError:
-            raise InvalidTransaction("Invalid payload serialization")
 
         if not action:
             raise InvalidTransaction('Action is required')

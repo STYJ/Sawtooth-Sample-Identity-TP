@@ -35,6 +35,12 @@ class Identity(object):
         self.name = name
         self.date_of_birth = date_of_birth
         self.gender = gender
+        self._owner = self._signer.get_public_key().as_hex()
+
+    @property
+    def owner(self):
+        return self._owner
+    
 
 class IdentityState(object):
 
@@ -101,7 +107,7 @@ class IdentityState(object):
             # Remove from address cache and validator state
             self._delete_identity(name)
 
-    # add the identity with the name name
+    # add / update the identity with the name name
     def set_identity(self, name, identity):
         """Store the identity in the validator state.
 

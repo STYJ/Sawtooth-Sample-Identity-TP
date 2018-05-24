@@ -14,195 +14,109 @@
 # ------------------------------------------------------------------------------
 
 import logging
-
+import pickle
 
 from sawtooth_sdk.processor.handler import TransactionHandler
 from sawtooth_sdk.processor.exceptions import InvalidTransaction
 from sawtooth_sdk.processor.exceptions import InternalError
 
-from sawtooth_xo.processor.xo_payload import XoPayload
-from sawtooth_xo.processor.xo_state import Game
-from sawtooth_xo.processor.xo_state import XoState
-from sawtooth_xo.processor.xo_state import XO_NAMESPACE
+from sawtooth_identity.processor.identity_payload import IdentityPayload
+from sawtooth_identity.processor.identity_state import Identity
+from sawtooth_identity.processor.identity_state import IdentityState
+from sawtooth_identity.processor.identity_state import IDENTITY_NAMESPACE
 
 
 LOGGER = logging.getLogger(__name__)
 
 
-class XoTransactionHandler(TransactionHandler):
+class IdentityTransactionHandler(TransactionHandler):
 
     @property
     def family_name(self):
-        return 'xo'
+        return 'identity'
 
     @property
     def family_versions(self):
-        return ['1.0']
+        return ['0.1']
 
     @property
     def namespaces(self):
-        return [XO_NAMESPACE]
+        return [IDENTITY_NAMESPACE]
 
     def apply(self, transaction, context):
 
         header = transaction.header
         signer = header.signer_public_key
 
-        xo_payload = XoPayload.from_bytes(transaction.payload)
+        # Unpack transaction
+        # returns an IdentityPayload object that contain action, name
+        # date_of_birth and gender
+        identity_payload = IdentityPayload.from_bytes(transaction.payload)
 
-        xo_state = XoState(context)
+        # Retrieve state from context
+        identity_state = IdentityState(context)
 
-        if xo_payload.action == 'delete':
-            game = xo_state.get_game(xo_payload.name)
+        # Process transaction and save updated state data
+        action = identity_payload.action
 
-            if game is None:
-                raise InvalidTransaction(
-                    'Invalid action: game does not exist')
-
-            xo_state.delete_game(xo_payload.name)
-
-        elif xo_payload.action == 'create':
-
-            if xo_state.get_game(xo_payload.name) is not None:
-                raise InvalidTransaction(
-                    'Invalid action: Game already exists: {}'.format(
-                        xo_payload.name))
-
-            game = Game(name=xo_payload.name,
-                        board="-" * 9,
-                        state="P1-NEXT",
-                        player1="",
-                        player2="")
-
-            xo_state.set_game(xo_payload.name, game)
-            _display("Player {} created a game.".format(signer[:6]))
-
-        elif xo_payload.action == 'take':
-            game = xo_state.get_game(xo_payload.name)
-
-            if game is None:
-                raise InvalidTransaction(
-                    'Invalid action: Take requires an existing game')
-
-            if game.state in ('P1-WIN', 'P2-WIN', 'TIE'):
-                raise InvalidTransaction('Invalid Action: Game has ended')
-
-            if (game.player1 and game.state == 'P1-NEXT'
-                and game.player1 != signer) or \
-                    (game.player2 and game.state == 'P2-NEXT'
-                     and game.player2 != signer):
-                raise InvalidTransaction(
-                    "Not this player's turn: {}".format(signer[:6]))
-
-            if game.board[xo_payload.space - 1] != '-':
-                raise InvalidTransaction(
-                    'Invalid Action: space {} already taken'.format(
-                        xo_payload))
-
-            if game.player1 == '':
-                game.player1 = signer
-
-            elif game.player2 == '':
-                game.player2 = signer
-
-            upd_board = _update_board(game.board,
-                                      xo_payload.space,
-                                      game.state)
-
-            upd_game_state = _update_game_state(game.state, upd_board)
-
-            game.board = upd_board
-            game.state = upd_game_state
-
-            xo_state.set_game(xo_payload.name, game)
-            _display(
-                "Player {} takes space: {}\n\n".format(
-                    signer[:6],
-                    xo_payload.space)
-                + _game_data_to_str(
-                    game.board,
-                    game.state,
-                    game.player1,
-                    game.player2,
-                    xo_payload.name))
-
-        else:
+        # Checks if it's a valid action
+        if action not in ('create', 'delete', 'update'):
             raise InvalidTransaction('Unhandled action: {}'.format(
-                xo_payload.action))
+                action))
 
+        # could use a variable name = identity_payload.name
+        identity = identity_state.get_identity(identity_payload.name)
+        
+        if action == 'delete':
 
-def _update_board(board, space, state):
-    if state == 'P1-NEXT':
-        mark = 'X'
-    elif state == 'P2-NEXT':
-        mark = 'O'
+            if identity is None:
+                raise InvalidTransaction(
+                    'Invalid action: name does not exist')
 
-    index = space - 1
+            identity_state.delete_identity(identity)
 
-    # replace the index-th space with mark, leave everything else the same
-    return ''.join([
-        current if square != index else mark
-        for square, current in enumerate(board)
-    ])
+        elif action == 'create':
 
+            # Identity has been created before
+            # Logic may need fixing
+            if identity is not None:
+                raise InvalidTransaction(
+                    'Invalid action: Identity already exists: {}'.format(
+                        identity_payload.name))
 
-def _update_game_state(game_state, board):
-    x_wins = _is_win(board, 'X')
-    o_wins = _is_win(board, 'O')
+            identity = Identity(
+                name=identity_payload.name,
+                date_of_birth=identity_payload.date_of_birth,
+                gender=identity_payload.gender)
 
-    if x_wins and o_wins:
-        raise InternalError('Two winners (there can be only one)')
+            identity_state.set_identity(identity_payload.name, identity)
+            _display("Player {} created a new identity.".format(signer[:6]))
 
-    elif x_wins:
-        return 'P1-WIN'
+        elif action == 'update':
 
-    elif o_wins:
-        return 'P2-WIN'
+            if identity is None:
+                raise InvalidTransaction(
+                    'Invalid action: Update requires an existing identity')
 
-    elif '-' not in board:
-        return 'TIE'
+            if identity.owner != signer:
+                raise InvalidTransaction(
+                    "This identity does not belong to this user:" +
+                    " {}".format(signer[:6]))
 
-    elif game_state == 'P1-NEXT':
-        return 'P2-NEXT'
+            # I don't believe there are any other validations required 
+            # as they're all built elsewhere.
 
-    elif game_state == 'P2-NEXT':
-        return 'P1-NEXT'
+            # The update transaction that is received by the CLI has 
+            # already been manipulated, see identity_client.py.
+            identity = _update_identity(identity, identity_payload)
+            identity_state.set_identity(identity_payload.name, identity)
+            _display("User {} has updated identity with the name {}."
+                .format(signer[:6], identity_payload.name))
 
-    elif game_state in ('P1-WINS', 'P2-WINS', 'TIE'):
-        return game_state
-
-    else:
-        raise InternalError('Unhandled state: {}'.format(game_state))
-
-
-def _is_win(board, letter):
-    wins = ((1, 2, 3), (4, 5, 6), (7, 8, 9),
-            (1, 4, 7), (2, 5, 8), (3, 6, 9),
-            (1, 5, 9), (3, 5, 7))
-
-    for win in wins:
-        if (board[win[0] - 1] == letter
-                and board[win[1] - 1] == letter
-                and board[win[2] - 1] == letter):
-            return True
-    return False
-
-
-def _game_data_to_str(board, game_state, player1, player2, name):
-    board = list(board.replace("-", " "))
-    out = ""
-    out += "GAME: {}\n".format(name)
-    out += "PLAYER 1: {}\n".format(player1[:6])
-    out += "PLAYER 2: {}\n".format(player2[:6])
-    out += "STATE: {}\n".format(game_state)
-    out += "\n"
-    out += "{} | {} | {}\n".format(board[0], board[1], board[2])
-    out += "---|---|---\n"
-    out += "{} | {} | {}\n".format(board[3], board[4], board[5])
-    out += "---|---|---\n"
-    out += "{} | {} | {}".format(board[6], board[7], board[8])
-    return out
-
+def _update_identity(identity, payload):
+    identity.name = payload.name
+    identity.date_of_birth = payload.date_of_birth
+    identity.gender = payload.gender
 
 def _display(msg):
     n = msg.count("\n")

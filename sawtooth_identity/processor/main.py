@@ -85,15 +85,22 @@ def create_identity_config(args):
 
 
 def main(args=None):
+    print("here")
     if args is None:
         args = sys.argv[1:]
     opts = parse_args(args)
     processor = None
+    print("here 2")
     try:
         arg_config = create_identity_config(opts)
         identity_config = load_identity_config(arg_config)
         processor = TransactionProcessor(url=identity_config.connect)
         log_config = get_log_config(filename="identity_log_config.toml")
+
+        print(arg_config)
+        print(identity_config)
+        print(processor)
+        print(log_config)
 
         # If no toml, try loading yaml
         if log_config is None:

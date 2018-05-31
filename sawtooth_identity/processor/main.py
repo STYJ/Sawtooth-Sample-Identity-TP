@@ -42,6 +42,7 @@ DISTRIBUTION_NAME = 'sawtooth-identity'
 
 
 def parse_args(args):
+    print("in parse_args function")
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawTextHelpFormatter)
 
@@ -66,21 +67,26 @@ def parse_args(args):
         .format(version),
         help='print version information')
 
+    print(parser.parse_args(args))
+
     return parser.parse_args(args)
 
 
 def load_identity_config(first_config):
+    print("in load identity config function")
     default_identity_config = \
         load_default_identity_config()
     conf_file = os.path.join(get_config_dir(), 'identity.toml')
 
     toml_config = load_toml_identity_config(conf_file)
-
+    print(merge_identity_config(
+        configs=[first_config, toml_config, default_identity_config]))
     return merge_identity_config(
         configs=[first_config, toml_config, default_identity_config])
 
 
 def create_identity_config(args):
+    print("in create identity config")
     return IdentityConfig(connect=args.connect)
 
 

@@ -42,7 +42,6 @@ DISTRIBUTION_NAME = 'sawtooth-identity'
 
 
 def parse_args(args):
-    print("in parse_args function")
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawTextHelpFormatter)
 
@@ -67,46 +66,34 @@ def parse_args(args):
         .format(version),
         help='print version information')
 
-    print(parser.parse_args(args))
-
     return parser.parse_args(args)
 
 
 def load_identity_config(first_config):
-    print("in load identity config function")
     default_identity_config = \
         load_default_identity_config()
     conf_file = os.path.join(get_config_dir(), 'identity.toml')
 
     toml_config = load_toml_identity_config(conf_file)
-    print(merge_identity_config(
-        configs=[first_config, toml_config, default_identity_config]))
+
     return merge_identity_config(
         configs=[first_config, toml_config, default_identity_config])
 
 
 def create_identity_config(args):
-    print("in create identity config")
     return IdentityConfig(connect=args.connect)
 
 
 def main(args=None):
-    print("here")
     if args is None:
         args = sys.argv[1:]
     opts = parse_args(args)
     processor = None
-    print("here 2")
     try:
         arg_config = create_identity_config(opts)
         identity_config = load_identity_config(arg_config)
         processor = TransactionProcessor(url=identity_config.connect)
         log_config = get_log_config(filename="identity_log_config.toml")
-
-        print(arg_config)
-        print(identity_config)
-        print(processor)
-        print(log_config)
 
         # If no toml, try loading yaml
         if log_config is None:
@@ -126,14 +113,12 @@ def main(args=None):
         handler = identityTransactionHandler()
 
         processor.add_handler(handler)
-        print("got here fine")
+
         processor.start()
-        print("what happened?")
     except KeyboardInterrupt:
         pass
     except Exception as e:  # pylint: disable=broad-except
         print("Error: {}".format(e))
     finally:
         if processor is not None:
-            print("stopping")
             processor.stop()

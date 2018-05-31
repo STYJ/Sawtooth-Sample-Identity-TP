@@ -121,4 +121,5 @@ def main(args=None):
         print("Error: {}".format(e))
     finally:
         if processor is not None:
+            print("stopping")
             processor.stop()

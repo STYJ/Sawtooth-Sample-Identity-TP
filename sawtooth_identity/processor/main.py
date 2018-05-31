@@ -113,8 +113,9 @@ def main(args=None):
         handler = identityTransactionHandler()
 
         processor.add_handler(handler)
-
+        print("got here fine")
         processor.start()
+        print("what happened?")
     except KeyboardInterrupt:
         pass
     except Exception as e:  # pylint: disable=broad-except

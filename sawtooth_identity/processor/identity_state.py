@@ -22,7 +22,7 @@ IDENTITY_NAMESPACE = hashlib.sha512('identity'.encode("utf-8")).hexdigest()[0:6]
 
 
 infix = _sha512(name.encode('utf-8'))[0:6]
-        suffix = _sha512(self._signer.get_public_key().as_hex().encode('utf-8'))[-58:]
+suffix = _sha512(self._signer.get_public_key().as_hex().encode('utf-8'))[-58:]
 
 def _make_identity_address(self, name):
     return IDENTITY_NAMESPACE + \

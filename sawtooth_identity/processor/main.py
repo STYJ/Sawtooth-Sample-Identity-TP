@@ -18,6 +18,10 @@ import os
 import argparse
 import pkg_resources
 
+# Adding the necessary path to PYTHONPATH
+path = os.path.dirname(os.path.dirname(os.getcwd()))
+sys.path.append(path)
+
 from sawtooth_sdk.processor.core import TransactionProcessor
 from sawtooth_sdk.processor.log import init_console_logging
 from sawtooth_sdk.processor.log import log_configuration

@@ -90,11 +90,12 @@ def main(args=None):
     opts = parse_args(args)
     processor = None
     try:
+        print("here 1")
         arg_config = create_identity_config(opts)
         identity_config = load_identity_config(arg_config)
         processor = TransactionProcessor(url=identity_config.connect)
         log_config = get_log_config(filename="identity_log_config.toml")
-
+        print("here 2")
         # If no toml, try loading yaml
         if log_config is None:
             log_config = get_log_config(filename="identity_log_config.yaml")
@@ -107,14 +108,15 @@ def main(args=None):
             log_configuration(
                 log_dir=log_dir,
                 name="identity-" + str(processor.zmq_id)[2:-1])
-
+        print('here 3')
         init_console_logging(verbose_level=opts.verbose)
-
+        print('here 4')
         handler = IdentityTransactionHandler()
-
+        print('here 5')
         processor.add_handler(handler)
-
+        print('here 6')
         processor.start()
+        print('here 7')
     except KeyboardInterrupt:
         pass
     except Exception as e:  # pylint: disable=broad-except

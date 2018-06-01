@@ -122,3 +122,7 @@ def main(args=None):
     finally:
         if processor is not None:
             processor.stop()
+
+
+if __name__ == "__main__":
+    main()
